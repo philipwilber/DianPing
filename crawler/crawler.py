@@ -1,9 +1,8 @@
-import urllib.request
 import requests
 from lxml import etree
-import re
 
-import constant
+from utils import constant
+
 
 class Scrapy(object):
     """description of class"""
