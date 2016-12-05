@@ -42,13 +42,14 @@ class Scrapy(object):
             tel = shop_tree.xpath('//*[@id="basic-info"]/p[@class="expand-info tel"]/span[2]')[0].text.strip()
             #open_hour = shop_tree.xpath('//*[@id="basic-info"]/div[@class="other J-other"]/p[@class="info info-indent"]/span[@class="item"]')[0].text.strip()
             #open_hour = shop_tree.xpath('//*[@id="basic-info"]/div[3]/p[1]/span[2]')[0].text.strip()
-            info_indent_list = shop_tree.xpath('//*[@id="basic-info"]/div[@class="other J-other"]/p')
+            info_indent_list = shop_tree.xpath('//*[@id="basic-info"]/div[@class="other J-other Hide"]/p')
             if len(info_indent_list) > 0:
-                #for y in range(len(info_indent_list)):
-                for item in info_indent_list:
-                    str = item.xpath('//*span[1]')[0].text.strip()
-                    if str == '营业时间：':
-                        str2 = item.xpath('//*span[2]')[0].text.strip()
+                for y in range(len(info_indent_list)):
+                    node = shop_tree.xpath('//*[@id="basic-info"]/div[@class="other J-other Hide"]/p[%s]/span[1]' % (y+1))
+                    if node[0].text.strip() == '营业时间：':
+                        open_hours = shop_tree.xpath('//*[@id="basic-info"]/div[@class="other J-other Hide"]/p[%s]/span[2]' % (y+1))[0].text.strip()
+                        break
+
 
 
             stars = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[1]/@title')[0].strip()
@@ -70,7 +71,7 @@ class Scrapy(object):
                    "category" : category,
                    "address" : address,
                    "tel": tel,
-                   "open_hour": open_hour,
+                   "open_hour": open_hours,
                    "stars": stars,
                    "comment_num": comment_num,
                    "per_price": per_price,
