@@ -176,7 +176,8 @@ class Scrapy(object):
                    "review": dic_review}
 
 
-''
+
+
 
 
 # /li[1]/div[2]/div[1]/a[1]
