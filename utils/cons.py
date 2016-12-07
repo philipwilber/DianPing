@@ -1,6 +1,7 @@
 
 DIAN_PING_SEARCH_URL = 'http://www.dianping.com/search/category/%s/%s'
 DIAN_PING_URL = 'http://www.dianping.com'
+DIAN_PING_REV_PAGE = '?pageno='
 CITIES = {'zhengzhou':160}
 CATEGORIES = {'food':10}
 HEADER = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '

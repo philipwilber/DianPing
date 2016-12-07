@@ -8,11 +8,11 @@ import time
 from utils import cons
 
 
-class Scrapy(object):
+class Crawler(object):
     """description of class"""
 
     def __init__(self, **kwargs):
-        return super().__init__(**kwargs)
+        pass
 
     def get_tree(self, url):
         # req = urllib.request.Request(url=url, headers=const.HEADER)
@@ -22,9 +22,9 @@ class Scrapy(object):
         tree = fromstring(page.text)
         return tree
 
-    def get_food_content(self, city, branch):
-        url = cons.DIAN_PING_SEARCH_URL % (city, branch)
-        tree = self.get_tree('http://www.dianping.com/search/category/160/10/r321')
+    def get_food_content(self, url, city, branch):
+        url = url % (city, branch)
+        tree = self.get_tree(url)
         shop_list = tree.xpath('//*[@id="shop-all-list"]/ul/li')
         for x in range(len(shop_list)):
             _shop_url = tree.xpath(
@@ -109,7 +109,7 @@ class Scrapy(object):
             page_num = 1
             while page_num <= int(page_max):
                 if page_num > 1:
-                    review_url + '?pageno=' + page_num
+                    review_url + cons.DIAN_PING_REV_PAGE + page_num
                     review_tree = self.get_tree(review_url)
                     # inside loop
                 comment_list = review_tree.xpath(
@@ -122,8 +122,6 @@ class Scrapy(object):
                         '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="pic"]/p[@class="name"]/a/text()')
                 comment_rank_list = review_tree.xpath(
                         '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/span[1]/@title')
-                    # comment_perprice_list = review_tree.xpath(
-                    #     '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/span[@class="comm-per"]/text()')
                 comment_taste_lvl_list = review_tree.xpath(
                         '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/div/span[1]/text()')
                 comment_env_lvl_list = review_tree.xpath(
@@ -156,7 +154,6 @@ class Scrapy(object):
                 page_num = page_num + 1
             #
 
-
             dic = {"ID": ID,
                    "title": title,
                    "features": features,
@@ -173,7 +170,8 @@ class Scrapy(object):
                    "lvl_env": lvl_env,
                    "lvl_serv": lvl_serv,
                    "review_num": review_num,
-                   "review": dic_review}
+                   "review": dic_review
+                   }
 
 
 
@@ -193,5 +191,5 @@ def get_re_digits(pre_str, target_str):
 
 
 if __name__ == '__main__':
-    s = Scrapy()
-    s.get_food_content(cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
+    s = Crawler()
+    s.get_food_content(cons.DIAN_PING_SEARCH_URL, cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
