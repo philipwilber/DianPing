@@ -2,30 +2,41 @@ import re
 
 import requests
 from lxml import etree
-from lxml.html.soupparser import fromstring
+import lxml.html
 import time
 
 from utils import cons
+from db import db_provider
 
 
 class Crawler(object):
     """description of class"""
 
     def __init__(self, **kwargs):
-        pass
+        self.db = db_provider.DBProvider()
 
     def get_tree(self, url):
         # req = urllib.request.Request(url=url, headers=const.HEADER)
         # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
         page = requests.get(url, headers=cons.HEADER)
         page.encoding = cons.ENCODE_FORM
-        tree = fromstring(page.text)
+        #tree = fromstring(page.text)
+        tree = etree.HTML(page.text)
         return tree
 
-    def get_food_content(self, url, city, branch):
+    def get_tree_by_html(self, url):
+        # req = urllib.request.Request(url=url, headers=const.HEADER)
+        # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
+        page = requests.get(url, headers=cons.HEADER)
+        page.encoding = cons.ENCODE_FORM
+        tree = lxml.html.fromstring(page.text)
+        #tree = etree.HTML(page.text)
+        return tree
+
+    def get_restaurant_content(self, url, city, branch):
         url = url % (city, branch)
         tree = self.get_tree(url)
-        shop_list = tree.xpath('//*[@id="shop-all-list"]/ul/li')
+        shop_list = tree.xpath('//*[@id="shop-all-list"]/ul/li/div[1]')
         for x in range(len(shop_list)):
             _shop_url = tree.xpath(
                 '//*[@id="shop-all-list"]/ul/li[%s]/div[@class="txt"]/div[@class="tit"]/a[1]/@href' % (x + 1))
@@ -38,16 +49,16 @@ class Crawler(object):
                 x + 1))
             features = {}
             for y in range(len(features_list)):
-                str = features_list[y]
-                if 'igroup' == str:
+                item = features_list[y]
+                if 'igroup' == item:
                     features["groupon"] = 1
-                elif 'ipromote' == str:
+                elif 'ipromote' == item:
                     features["promotion"] = 1
-                elif 'iout' == str:
+                elif 'iout' == item:
                     features["out"] = 1
-                elif 'icard' == str:
+                elif 'icard' == item:
                     features["card"] = 1
-                elif 'ibook' == str:
+                elif 'ibook' == item:
                     features["book"] = 1
 
             shop_url = cons.DIAN_PING_URL + _shop_url[0]
@@ -99,18 +110,21 @@ class Crawler(object):
             review_num = get_re_digits('\s*(\d+)', review_num)
 
             # Review
-            dic_review = {}
+            dic_review_list = []
             review_url = shop_url + '/review_all'
-            review_tree = self.get_tree(review_url)
+            review_tree = self.get_tree_by_html(review_url)
             page_nums = review_tree.xpath(
                 '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="Pages"]/div/a/@data-pg')
-            page_nums = list(map(int, page_nums))
-            page_max = max(page_nums)
+            if len(page_nums) > 0:
+                page_nums = list(map(int, page_nums))
+                page_max = max(page_nums)
+            else:
+                page_max = 1
             page_num = 1
             while page_num <= int(page_max):
                 if page_num > 1:
-                    review_url + cons.DIAN_PING_REV_PAGE + page_num
-                    review_tree = self.get_tree(review_url)
+                    review_url = shop_url + '/review_all' + cons.DIAN_PING_REV_PAGE + str(page_num)
+                    review_tree = self.get_tree_by_html(review_url)
                     # inside loop
                 comment_list = review_tree.xpath(
                         '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li')
@@ -128,18 +142,29 @@ class Crawler(object):
                         '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/div/span[2]/text()')
                 comment_ser_lvl_list = review_tree.xpath(
                         '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/div/span[3]/text()')
-                comment_desc_list = review_tree.xpath(
-                    '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="comment-txt"]/div')
+                # move into for loop
+                # comment_desc_list = review_tree.xpath(
+                #     '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="comment-txt"]/div')
                 comment_date_list = review_tree.xpath(
                     '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="misc-info"]/span[1]/text()')
 
                 if len(comment_list) > 0:
                     for y in range(len(comment_list)):
+                        # add date formating to fix review_date due to free-text-formate
                         review_date = comment_date_list[y]
                         if(len(review_date) > 5):
                             review_date = get_re_digits("(\d+-\d+-\d+)", review_date)
                         else:
                             review_date = time.strftime("%y", time.localtime()) +'-'+ review_date
+
+                        #if description includes "更多", the div will divides into two sub-div.
+                        comment_desc_div = review_tree.xpath(
+                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="comment-txt"]/div' % (y+1))
+                        comment_desc = ''
+                        if len(comment_desc_div) > 1:
+                            comment_desc = comment_desc_div[1].text_content().strip()
+                        else:
+                            comment_desc = comment_desc_div[0].text_content().strip()
                         dic_review = {
                             "ID": comment_id_list[y],
                             "user_id": comment_userid_list[y],
@@ -148,12 +173,12 @@ class Crawler(object):
                             "taste_lvl": get_re_digits('(\d+)', comment_taste_lvl_list[y]),
                             "env_lvl": get_re_digits('(\d+)', comment_env_lvl_list[y]),
                             "ser_lvl": get_re_digits('(\d+)', comment_ser_lvl_list[y]),
-                            "desc": comment_desc_list[y].text_content().strip(),
+                            "desc": comment_desc,
                             "date": review_date
                         }
+                        dic_review_list.append(dic_review)
                 page_num = page_num + 1
-            #
-
+                #
             dic = {"ID": ID,
                    "title": title,
                    "features": features,
@@ -170,8 +195,13 @@ class Crawler(object):
                    "lvl_env": lvl_env,
                    "lvl_serv": lvl_serv,
                    "review_num": review_num,
-                   "review": dic_review
+                   "review": dic_review_list
                    }
+            self.db.add_food_shop(dic)
+            print('Insert record: ID:' + ID + ' Title: ' + title)
+
+
+
 
 
 
@@ -192,4 +222,4 @@ def get_re_digits(pre_str, target_str):
 
 if __name__ == '__main__':
     s = Crawler()
-    s.get_food_content(cons.DIAN_PING_SEARCH_URL, cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
+    s.get_restaurant_content(cons.DIAN_PING_SEARCH_URL, cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
