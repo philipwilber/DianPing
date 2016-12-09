@@ -112,7 +112,8 @@ class Crawler(object):
             # Review
             dic_review_list = []
             review_url = shop_url + '/review_all'
-            review_tree = self.get_tree_by_html(review_url)
+            review_tree = self.get_tree(review_url)
+            review_tree_by_html = self.get_tree_by_html(review_url)
             page_nums = review_tree.xpath(
                 '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="Pages"]/div/a/@data-pg')
             if len(page_nums) > 0:
@@ -158,7 +159,7 @@ class Crawler(object):
                             review_date = time.strftime("%y", time.localtime()) +'-'+ review_date
 
                         #if description includes "更多", the div will divides into two sub-div.
-                        comment_desc_div = review_tree.xpath(
+                        comment_desc_div = review_tree_by_html.xpath(
                             '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="comment-txt"]/div' % (y+1))
                         comment_desc = ''
                         if len(comment_desc_div) > 1:
