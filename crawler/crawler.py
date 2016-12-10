@@ -1,9 +1,12 @@
 import re
 
+import sys
 import requests
 from lxml import etree
 import lxml.html
 import time
+import json
+import webbrowser
 
 from utils import cons
 from db import db_provider
@@ -14,24 +17,42 @@ class Crawler(object):
 
     def __init__(self, **kwargs):
         self.db = db_provider.DBProvider()
+        self.page_num = 0
 
     def get_tree(self, url):
-        # req = urllib.request.Request(url=url, headers=const.HEADER)
-        # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
-        page = requests.get(url, headers=cons.HEADER)
-        page.encoding = cons.ENCODE_FORM
-        #tree = fromstring(page.text)
-        tree = etree.HTML(page.text)
-        return tree
+        try:
+            self.page_num = self.page_num + 1
+            # req = urllib.request.Request(url=url, headers=const.HEADER)
+            # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
+            page = requests.get(url, headers=cons.HEADER)
+            page.encoding = cons.ENCODE_FORM
+            # tree = fromstring(page.text)
+            tree = etree.HTML(page.text)
+            if tree.xpath('/html/head/title/text') == '验证码':
+                if self.get_auth_code() == True:
+                    self.get_tree(url)
+            else:
+                print('(etree)Read Page Number:' + str(self.page_num) + '   Url: ' + url)
+                return tree
+        except:
+            print("Unexpected error:", sys.exc_info())
 
     def get_tree_by_html(self, url):
-        # req = urllib.request.Request(url=url, headers=const.HEADER)
-        # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
-        page = requests.get(url, headers=cons.HEADER)
-        page.encoding = cons.ENCODE_FORM
-        tree = lxml.html.fromstring(page.text)
-        #tree = etree.HTML(page.text)
-        return tree
+        try:
+            # req = urllib.request.Request(url=url, headers=const.HEADER)
+            # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
+            page = requests.get(url, headers=cons.HEADER)
+            page.encoding = cons.ENCODE_FORM
+            tree = lxml.html.fromstring(page.text)
+            if tree.xpath('/html/head/title/text') == '验证码':
+                if self.get_auth_code() == True:
+                    self.get_tree_by_html(url)
+            else:
+                print('(lxml.html.fromstring)Read Page Number:' + str(self.page_num) + ' Url : ' + url)
+                return tree
+        except:
+            print("Unexpected error:", sys.exc_info())
+
 
     def get_restaurant_content(self, url, city, branch):
         url = url % (city, branch)
@@ -125,7 +146,8 @@ class Crawler(object):
             while page_num <= int(page_max):
                 if page_num > 1:
                     review_url = shop_url + '/review_all' + cons.DIAN_PING_REV_PAGE + str(page_num)
-                    review_tree = self.get_tree_by_html(review_url)
+                    review_tree = self.get_tree(review_url)
+                    review_tree_by_html = self.get_tree_by_html(review_url)
                     # inside loop
                 comment_list = review_tree.xpath(
                         '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li')
@@ -202,6 +224,34 @@ class Crawler(object):
             print('Insert record: ID:' + ID + ' Title: ' + title)
 
 
+    def get_auth_code(self):
+        # tree = self.get_tree(
+        #     'http://h5.dianping.com/platform/secure/index.html?returl=http://www.dianping.com/shop/23437592/review_all?pageno=20')
+        # url = tree.xpath('//*[@id="J_code"]/@src')
+        # print(url)
+        # webbrowser.open_new(url)
+        content = requests.get(cons.DIAN_PINT_AUTH_URL, headers=cons.HEADER)
+        content_text = str(content.text)
+        content_text = content_text.replace('EasyLoginCallBack1(','').replace('}})','}}')
+        dic_image = json.loads(content_text)
+        print(dic_image)
+        pic_url = dic_image['msg']['url']
+        webbrowser.open_new(pic_url)
+        input_text = input("Enter Verification Code:")
+        auth_content_text = requests.get('http://m.dianping.com/account/ajax/checkCaptcha?vcode='+input_text+'&signature='+dic_image['msg']['signature'], headers=cons.HEADER)
+        dic_auth = json.loads(auth_content_text.text)
+        if(dic_auth['code'] == 200):
+            print("Verification Success")
+            return True
+        else:
+            self.get_auth_code()
+
+
+        #pic = requests.get(pic_url,headers=cons.HEADER)
+
+
+
+
 
 
 
@@ -223,4 +273,5 @@ def get_re_digits(pre_str, target_str):
 
 if __name__ == '__main__':
     s = Crawler()
-    s.get_restaurant_content(cons.DIAN_PING_SEARCH_URL, cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
+    #s.get_restaurant_content(cons.DIAN_PING_SEARCH_URL, cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
+    s.get_auth_code()
