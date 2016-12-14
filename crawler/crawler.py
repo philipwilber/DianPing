@@ -10,6 +10,7 @@ import webbrowser
 
 from utils import cons
 from db import db_provider
+from proxy import proxy_collect
 
 
 class Crawler(object):
@@ -19,17 +20,35 @@ class Crawler(object):
         self.db = db_provider.DBProvider()
         self.page_num = 0
 
-    def get_html(self, url):
-        self.page_num = self.page_num + 1
-        # req = urllib.request.Request(url=url, headers=const.HEADER)
-        # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
-        page = requests.get(url, headers=cons.HEADER)
-        page.encoding = cons.ENCODE_FORM
-        return page.text
+    def get_html(self, url, proxies):
+        try:
+            self.page_num = self.page_num + 1
+            # req = urllib.request.Request(url=url, headers=const.HEADER)
+            # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
+            if proxies != None :
+                page = requests.get(url, headers=cons.HEADER, proxies=proxies, timeout=cons.TIMEOUT)
+            else:
+                page = requests.get(url, headers=cons.HEADER, timeout=cons.TIMEOUT)
+            if (page.status_code == 200 ):
+                page.encoding = cons.ENCODE_FORM
+                return page.text
+            else:
+                print("Connection Error. Change to new proxy : ")
+                proxy = proxy_collect.ProxyPool()
+                proxies_set = proxy.getproxy()
+                print(proxies_set)
+                return self.get_html(url, proxies_set)
+        except:
+            print("Unexpected error:", sys.exc_info())
+            print("Change to new proxy : ")
+            proxy = proxy_collect.ProxyPool()
+            proxies_set = proxy.getproxy()
+            print(proxies_set)
+            return self.get_html(url, proxies_set)
 
     def get_tree_direct(self, url):
         try:
-            page_text = self.get_html(url)
+            page_text = self.get_html(url, None)
             tree = etree.HTML(page_text)
             print('(etree)Read Page Number:' + str(self.page_num) + '   Url: ' + url)
             return tree
@@ -44,7 +63,7 @@ class Crawler(object):
                 tree = lxml.html.fromstring(page_text)
             if tree.xpath('/html/head/title/text') == '验证码':
                 if self.get_auth_code() == True:
-                    self.get_tree(url, self.get_html(url), etree_to_html)
+                    self.get_tree(url, self.get_html(url, None), etree_to_html)
             else:
                 if(etree_to_html == False):
                     print('(etree)Read Page Number:' + str(self.page_num) + '   Url: ' + url)
@@ -57,7 +76,7 @@ class Crawler(object):
 
     def get_restaurant_content(self, url, city, branch):
         url = url % (city, branch)
-        tree = self.get_tree(url, self.get_html(url), False)
+        tree = self.get_tree(url, self.get_html(url, None), False)
         shop_list = tree.xpath('//*[@id="shop-all-list"]/ul/li/div[1]')
         for x in range(len(shop_list)):
             _shop_url = tree.xpath(
@@ -84,7 +103,7 @@ class Crawler(object):
                     features["book"] = 1
 
             shop_url = cons.DIAN_PING_URL + _shop_url[0]
-            shop_tree = self.get_tree(shop_url, self.get_html(shop_url), False)
+            shop_tree = self.get_tree(shop_url, self.get_html(shop_url, None), False)
             region_url = shop_tree.xpath('//*[@id="body"]/div[2]/div[1]/a[2]/@href')[0]
             # eg. http://www.dianping.com/search/category/160/10/r7457
             region = 'r' + get_re_digits('r\/*(\d+)', region_url)
@@ -134,7 +153,7 @@ class Crawler(object):
             # Review
             dic_review_list = []
             review_url = shop_url + '/review_all'
-            review_page_text = self.get_html(review_url)
+            review_page_text = self.get_html(review_url, None)
             review_tree = self.get_tree(review_url, review_page_text, False)
             review_tree_by_html = self.get_tree(review_url, review_page_text, True)
             page_nums = review_tree.xpath(
@@ -148,7 +167,7 @@ class Crawler(object):
             while page_num <= int(page_max):
                 if page_num > 1:
                     review_url = shop_url + '/review_all' + cons.DIAN_PING_REV_PAGE + str(page_num)
-                    review_page_text = self.get_html(review_url)
+                    review_page_text = self.get_html(review_url, None)
                     review_tree = self.get_tree(review_url, review_page_text, False)
                     review_tree_by_html = self.get_tree(review_url, review_page_text, True)
                     # inside loop
