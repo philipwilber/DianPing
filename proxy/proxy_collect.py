@@ -28,7 +28,7 @@ class ProxyCollection(object):
         url_list = ('http://www.kuaidaili.com/proxylist/{page}/'.format(page=page) for page in range(1, page + 1))
         # 页数不用太多， 后面的全是历史IP， 可用性不高
         for url in url_list:
-            tree = self.craw.get_tree(url)
+            tree = self.craw.get_tree_direct(url)
             proxy_list = tree.xpath('.//div[@id="index_free_list"]//tbody/tr')
             for proxy in proxy_list:
                 yield ':'.join(proxy.xpath('./td/text()')[0:2])
@@ -54,7 +54,7 @@ class ProxyCollection(object):
         Disabled now
         """
         url = "http://www.youdaili.net/Daili/http/"
-        tree = self.craw.get_tree(url)
+        tree = self.craw.get_tree_direct(url)
         page_url_list = tree.xpath('.//div[@class="chunlist"]/ul//a/@href')[0:days]
         for page_url in page_url_list:
             html = requests.get(page_url).content
@@ -78,7 +78,7 @@ class ProxyCollection(object):
         :return:
         """
         url = "http://www.goubanjia.com/free/gngn/index.shtml"
-        tree = self.craw.get_tree(url)
+        tree = self.craw.get_tree_direct(url)
         proxy_list = tree.xpath('.//td[@class="ip"]')
         for proxy in proxy_list:
             yield ''.join(proxy.xpath('.//text()'))

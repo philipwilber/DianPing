@@ -19,36 +19,37 @@ class Crawler(object):
         self.db = db_provider.DBProvider()
         self.page_num = 0
 
-    def get_tree(self, url):
+    def get_html(self, url):
+        self.page_num = self.page_num + 1
+        # req = urllib.request.Request(url=url, headers=const.HEADER)
+        # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
+        page = requests.get(url, headers=cons.HEADER)
+        page.encoding = cons.ENCODE_FORM
+        return page.text
+
+    def get_tree_direct(self, url):
         try:
-            self.page_num = self.page_num + 1
-            # req = urllib.request.Request(url=url, headers=const.HEADER)
-            # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
-            page = requests.get(url, headers=cons.HEADER)
-            page.encoding = cons.ENCODE_FORM
-            # tree = fromstring(page.text)
-            tree = etree.HTML(page.text)
-            if tree.xpath('/html/head/title/text') == '验证码':
-                if self.get_auth_code() == True:
-                    self.get_tree(url)
-            else:
-                print('(etree)Read Page Number:' + str(self.page_num) + '   Url: ' + url)
-                return tree
+            page_text = self.get_html(url)
+            tree = etree.HTML(page_text)
+            print('(etree)Read Page Number:' + str(self.page_num) + '   Url: ' + url)
+            return tree
         except:
             print("Unexpected error:", sys.exc_info())
 
-    def get_tree_by_html(self, url):
+    def get_tree(self, url, page_text, etree_to_html = False):
         try:
-            # req = urllib.request.Request(url=url, headers=const.HEADER)
-            # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
-            page = requests.get(url, headers=cons.HEADER)
-            page.encoding = cons.ENCODE_FORM
-            tree = lxml.html.fromstring(page.text)
+            if(etree_to_html == False):
+                tree = etree.HTML(page_text)
+            else:
+                tree = lxml.html.fromstring(page_text)
             if tree.xpath('/html/head/title/text') == '验证码':
                 if self.get_auth_code() == True:
-                    self.get_tree_by_html(url)
+                    self.get_tree(url, self.get_html(url), etree_to_html)
             else:
-                print('(lxml.html.fromstring)Read Page Number:' + str(self.page_num) + ' Url : ' + url)
+                if(etree_to_html == False):
+                    print('(etree)Read Page Number:' + str(self.page_num) + '   Url: ' + url)
+                else:
+                    print('(lxml.html.fromstring)Read Page Number:' + str(self.page_num) + ' Url : ' + url)
                 return tree
         except:
             print("Unexpected error:", sys.exc_info())
@@ -56,7 +57,7 @@ class Crawler(object):
 
     def get_restaurant_content(self, url, city, branch):
         url = url % (city, branch)
-        tree = self.get_tree(url)
+        tree = self.get_tree(url, self.get_html(url), False)
         shop_list = tree.xpath('//*[@id="shop-all-list"]/ul/li/div[1]')
         for x in range(len(shop_list)):
             _shop_url = tree.xpath(
@@ -83,7 +84,7 @@ class Crawler(object):
                     features["book"] = 1
 
             shop_url = cons.DIAN_PING_URL + _shop_url[0]
-            shop_tree = self.get_tree(shop_url)
+            shop_tree = self.get_tree(shop_url, self.get_html(shop_url), False)
             region_url = shop_tree.xpath('//*[@id="body"]/div[2]/div[1]/a[2]/@href')[0]
             # eg. http://www.dianping.com/search/category/160/10/r7457
             region = 'r' + get_re_digits('r\/*(\d+)', region_url)
@@ -133,8 +134,9 @@ class Crawler(object):
             # Review
             dic_review_list = []
             review_url = shop_url + '/review_all'
-            review_tree = self.get_tree(review_url)
-            review_tree_by_html = self.get_tree_by_html(review_url)
+            review_page_text = self.get_html(review_url)
+            review_tree = self.get_tree(review_url, review_page_text, False)
+            review_tree_by_html = self.get_tree(review_url, review_page_text, True)
             page_nums = review_tree.xpath(
                 '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="Pages"]/div/a/@data-pg')
             if len(page_nums) > 0:
@@ -146,8 +148,9 @@ class Crawler(object):
             while page_num <= int(page_max):
                 if page_num > 1:
                     review_url = shop_url + '/review_all' + cons.DIAN_PING_REV_PAGE + str(page_num)
-                    review_tree = self.get_tree(review_url)
-                    review_tree_by_html = self.get_tree_by_html(review_url)
+                    review_page_text = self.get_html(review_url)
+                    review_tree = self.get_tree(review_url, review_page_text, False)
+                    review_tree_by_html = self.get_tree(review_url, review_page_text, True)
                     # inside loop
                 comment_list = review_tree.xpath(
                         '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li')
