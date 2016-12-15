@@ -210,14 +210,23 @@ class Crawler(object):
                             comment_desc = comment_desc_div[1].text_content().strip()
                         else:
                             comment_desc = comment_desc_div[0].text_content().strip()
+                        lvl_list = review_tree.xpath(
+                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="user-info"]/div/span' % (y+1))
+                        if len(lvl_list) > 0:
+                            taste_lvl = lvl_list[0].text.strip()
+                            env_lvl = lvl_list[1].text.strip()
+                            ser_lvl = lvl_list[2].text.strip()
                         dic_review = {
                             "ID": comment_id_list[y],
                             "user_id": comment_userid_list[y],
                             "user_name": comment_username_list[y].strip(),
                             "rank": comment_rank_list[y],
-                            "taste_lvl": get_re_digits('(\d+)', comment_taste_lvl_list[y]),
-                            "env_lvl": get_re_digits('(\d+)', comment_env_lvl_list[y]),
-                            "ser_lvl": get_re_digits('(\d+)', comment_ser_lvl_list[y]),
+                            # "taste_lvl": get_re_digits('(\d+)', comment_taste_lvl_list[y]),
+                            # "env_lvl": get_re_digits('(\d+)', comment_env_lvl_list[y]),
+                            # "ser_lvl": get_re_digits('(\d+)', comment_ser_lvl_list[y]),
+                            "taste_lvl": get_re_digits('(\d+)', taste_lvl),
+                            "env_lvl": get_re_digits('(\d+)', env_lvl),
+                            "ser_lvl": get_re_digits('(\d+)', ser_lvl),
                             "desc": comment_desc,
                             "date": review_date
                         }
@@ -295,5 +304,5 @@ def get_re_digits(pre_str, target_str):
 
 if __name__ == '__main__':
     s = Crawler()
-    #s.get_restaurant_content(cons.DIAN_PING_SEARCH_URL, cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
-    s.get_auth_code()
+    s.get_restaurant_content(cons.DIAN_PING_SEARCH_URL, cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
+    # s.get_auth_code()
