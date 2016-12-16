@@ -6,6 +6,7 @@ class DBProvider(object):
         conn = MongoClient('localhost', 27017)
         self.db = conn.DB_DIANPING
         self.tb_food_shop = self.db.TB_RESTAURANT
+        self.tb_cat = self.db.TB_CAT
 
 
 
@@ -17,6 +18,18 @@ class DBProvider(object):
     def get_food_shop(self):
         for item in self.tb_food_shop.find():
            print(item)
+
+    def check_shop_exist(self, ID):
+        count = self.tb_food_shop.find({'ID': ID}).count()
+        if count > 0 :
+            return 'Y'
+        else:
+            return 'N'
+
+    def add_cat(self, cat_dic):
+        self.tb_cat.insert(cat_dic)
+
+
 
 
 

@@ -47,6 +47,7 @@ class Crawler(object):
             return self.get_html(url, proxies_set)
 
     def get_tree_direct(self, url):
+        # get tree without checking auth code page
         try:
             page_text = self.get_html(url, None)
             tree = etree.HTML(page_text)
@@ -56,10 +57,13 @@ class Crawler(object):
             print("Unexpected error:", sys.exc_info())
 
     def get_tree(self, url, page_text, etree_to_html = False):
+        # get tree with checking auth code page
         try:
             if(etree_to_html == False):
+                # get xpath by etree
                 tree = etree.HTML(page_text)
             else:
+                # get xpath by lxml.html to handle multi-line text
                 tree = lxml.html.fromstring(page_text)
             if tree.xpath('/html/head/title/text') == '验证码':
                 if self.get_auth_code() == True:
@@ -74,176 +78,205 @@ class Crawler(object):
             print("Unexpected error:", sys.exc_info())
 
 
-    def get_restaurant_content(self, url, city, branch):
-        url = url % (city, branch)
+    def get_restaurant_content(self, url):
         tree = self.get_tree(url, self.get_html(url, None), False)
+        # get next page url, it will be used at the end of this method to recursive loop
+        page_next = tree.xpath('//*[@id="top"]/div[6]/div[3]/div[1]/div[2]/a[@class="next"]/@href')
+        # get all restaurant infomation in current page
         shop_list = tree.xpath('//*[@id="shop-all-list"]/ul/li/div[1]')
         for x in range(len(shop_list)):
             _shop_url = tree.xpath(
                 '//*[@id="shop-all-list"]/ul/li[%s]/div[@class="txt"]/div[@class="tit"]/a[1]/@href' % (x + 1))
             ID = get_re_digits('\\\\*(\d+)', _shop_url[0])
-            title = \
-            tree.xpath('//*[@id="shop-all-list"]/ul/li[%s]/div[@class="txt"]/div[@class="tit"]/a[1]/@title' % (x + 1))[
-                0].strip()
-            features_list = tree.xpath(
-                '//*[@id="shop-all-list"]/ul/li[%s]/div[@class="txt"]/div[@class="tit"]/div[@class="promo-icon"]/a/@class' % (
-                x + 1))
-            features = {}
-            for y in range(len(features_list)):
-                item = features_list[y]
-                if 'igroup' == item:
-                    features["groupon"] = 1
-                elif 'ipromote' == item:
-                    features["promotion"] = 1
-                elif 'iout' == item:
-                    features["out"] = 1
-                elif 'icard' == item:
-                    features["card"] = 1
-                elif 'ibook' == item:
-                    features["book"] = 1
+            is_exit = self.db.check_shop_exist(ID)
+            if is_exit != 'Y':
+                title = \
+                    tree.xpath(
+                        '//*[@id="shop-all-list"]/ul/li[%s]/div[@class="txt"]/div[@class="tit"]/a[1]/@title' % (x + 1))[
+                        0].strip()
+                features_list = tree.xpath(
+                    '//*[@id="shop-all-list"]/ul/li[%s]/div[@class="txt"]/div[@class="tit"]/div[@class="promo-icon"]/a/@class' % (
+                        x + 1))
+                features = {}
+                for y in range(len(features_list)):
+                    item = features_list[y]
+                    if 'igroup' == item:
+                        features["groupon"] = 1
+                    elif 'ipromote' == item:
+                        features["promotion"] = 1
+                    elif 'iout' == item:
+                        features["out"] = 1
+                    elif 'icard' == item:
+                        features["card"] = 1
+                    elif 'ibook' == item:
+                        features["book"] = 1
 
-            shop_url = cons.DIAN_PING_URL + _shop_url[0]
-            shop_tree = self.get_tree(shop_url, self.get_html(shop_url, None), False)
-            region_url = shop_tree.xpath('//*[@id="body"]/div[2]/div[1]/a[2]/@href')[0]
-            # eg. http://www.dianping.com/search/category/160/10/r7457
-            region = 'r' + get_re_digits('r\/*(\d+)', region_url)
+                shop_url = cons.DIAN_PING_URL + _shop_url[0]
+                shop_tree = self.get_tree(shop_url, self.get_html(shop_url, None), False)
+                region_url = shop_tree.xpath('//*[@id="body"]/div[2]/div[1]/a[2]/@href')[0]
+                # eg. http://www.dianping.com/search/category/160/10/r7457
+                region = 'r' + get_re_digits('r\/*(\d+)', region_url)
 
-            cat_url = shop_tree.xpath('//*[@id="body"]/div[2]/div[1]/a[3]/@href')[0]
-            # eg. http://www.dianping.com/search/category/160/10/g110r7457
-            category = 'g' + get_re_digits('g\/*(\d+)', cat_url)
-            address = \
-            shop_tree.xpath('//*[@id="basic-info"]/div[@class="expand-info address"]/span[@class="item"]/@title')[
-                0].strip()
-            tel = shop_tree.xpath('//*[@id="basic-info"]/p[@class="expand-info tel"]/span[2]')[0].text.strip()
-            info_indent_list = shop_tree.xpath('//*[@id="basic-info"]/div[@class="other J-other Hide"]/p')
-            sys_upt_date = ''
-            shop_desc = ''
-            if len(info_indent_list) > 0:
-                for y in range(len(info_indent_list)):
-                    node = shop_tree.xpath(
-                        '//*[@id="basic-info"]/div[@class="other J-other Hide"]/p[%s]/span[1]' % (y + 1))
-                    if len(node) > 0:
-                        node_str = node[0].text.strip()
-                        if node_str == '营业时间：':
-                            open_hours = shop_tree.xpath(
-                                '//*[@id="basic-info"]/div[@class="other J-other Hide"]/p[%s]/span[2]' % (y + 1))[
-                                0].text.strip()
-                        if node_str == '餐厅简介：':
-                            shop_desc = \
-                            shop_tree.xpath('//*[@id="basic-info"]/div[@class="other J-other Hide"]/p[%s]' % (y + 1))[
-                                0].text.strip()
-                        if node_str == '会员贡献：':
-                            sys_upt_date = shop_tree.xpath(
-                                '//*[@id="basic-info"]/div[@class="other J-other Hide"]/p[%s]/span[2]/span[3]/span' % (
-                                y + 1))[0].text.strip()
-                            sys_upt_date = get_re_digits('\d+-\d+-\d+', sys_upt_date[0].text.strip())
+                cat_url = shop_tree.xpath('//*[@id="body"]/div[2]/div[1]/a[3]/@href')[0]
+                # eg. http://www.dianping.com/search/category/160/10/g110r7457
+                category = 'g' + get_re_digits('g\/*(\d+)', cat_url)
+                address = \
+                    shop_tree.xpath(
+                        '//*[@id="basic-info"]/div[@class="expand-info address"]/span[@class="item"]/@title')[
+                        0].strip()
+                tel = shop_tree.xpath('//*[@id="basic-info"]/p[@class="expand-info tel"]/span[2]')[0].text.strip()
+                info_indent_list = shop_tree.xpath('//*[@id="basic-info"]/div[@class="other J-other Hide"]/p')
+                sys_upt_date = ''
+                shop_desc = ''
+                if len(info_indent_list) > 0:
+                    for y in range(len(info_indent_list)):
+                        node = shop_tree.xpath(
+                            '//*[@id="basic-info"]/div[@class="other J-other Hide"]/p[%s]/span[1]' % (y + 1))
+                        if len(node) > 0:
+                            node_str = node[0].text.strip()
+                            if node_str == '营业时间：':
+                                open_hours = shop_tree.xpath(
+                                    '//*[@id="basic-info"]/div[@class="other J-other Hide"]/p[%s]/span[2]' % (y + 1))[
+                                    0].text.strip()
+                            if node_str == '餐厅简介：':
+                                shop_desc = \
+                                    shop_tree.xpath(
+                                        '//*[@id="basic-info"]/div[@class="other J-other Hide"]/p[%s]' % (y + 1))[
+                                        0].text.strip()
+                            if node_str == '会员贡献：':
+                                sys_upt_date = shop_tree.xpath(
+                                    '//*[@id="basic-info"]/div[@class="other J-other Hide"]/p[%s]/span[2]/span[3]/span' % (
+                                        y + 1))[0].text.strip()
+                                sys_upt_date = get_re_digits('\d+-\d+-\d+', sys_upt_date[0].text.strip())
 
-            stars = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[1]/@title')[0].strip()
-            per_price = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[3]')[0].text.strip()
-            per_price = get_re_digits('\s*(\d+)', per_price)
-            lvl_taste = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[4]')[0].text.strip()
-            lvl_taste = get_re_digits('\s*(\d.\d+)', lvl_taste)
-            lvl_env = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[5]')[0].text.strip()
-            lvl_env = get_re_digits('\s*(\d.\d+)', lvl_env)
-            lvl_serv = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[6]')[0].text.strip()
-            lvl_serv = get_re_digits('\s*(\d.\d+)', lvl_serv)
-            review_num = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[2]')[0].text.strip()
-            review_num = get_re_digits('\s*(\d+)', review_num)
+                stars = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[1]/@title')[0].strip()
+                if stars != '该商户暂无星级':
+                    review_num = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[2]')[0].text.strip()
+                    review_num = get_re_digits('\s*(\d+)', review_num)
+                    per_price = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[3]')[0].text.strip()
+                    per_price = get_re_digits('\s*(\d+)', per_price)
+                    lvl_taste = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[4]')[0].text.strip()
+                    lvl_taste = get_re_digits('\s*(\d.\d+)', lvl_taste)
+                    lvl_env = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[5]')[0].text.strip()
+                    lvl_env = get_re_digits('\s*(\d.\d+)', lvl_env)
+                    lvl_serv = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[6]')[0].text.strip()
+                    lvl_serv = get_re_digits('\s*(\d.\d+)', lvl_serv)
+                else:
+                    review_num = 0
+                    per_price = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[2]')[0].text.strip()
+                    per_price = get_re_digits('\s*(\d+)', per_price)
+                    lvl_taste = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[3]')[0].text.strip()
+                    lvl_taste = get_re_digits('\s*(\d.\d+)', lvl_taste)
+                    lvl_env = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[4]')[0].text.strip()
+                    lvl_env = get_re_digits('\s*(\d.\d+)', lvl_env)
+                    lvl_serv = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[5]')[0].text.strip()
+                    lvl_serv = get_re_digits('\s*(\d.\d+)', lvl_serv)
 
-            # Review
-            dic_review_list = []
-            review_url = shop_url + '/review_all'
-            review_page_text = self.get_html(review_url, None)
-            review_tree = self.get_tree(review_url, review_page_text, False)
-            review_tree_by_html = self.get_tree(review_url, review_page_text, True)
-            page_nums = review_tree.xpath(
-                '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="Pages"]/div/a/@data-pg')
-            if len(page_nums) > 0:
-                page_nums = list(map(int, page_nums))
-                page_max = max(page_nums)
-            else:
-                page_max = 1
-            page_num = 1
-            while page_num <= int(page_max):
-                if page_num > 1:
-                    review_url = shop_url + '/review_all' + cons.DIAN_PING_REV_PAGE + str(page_num)
+                dic_review_list = []
+                if review_num != 0:
+                    # Review
+                    review_url = shop_url + '/review_all'
                     review_page_text = self.get_html(review_url, None)
                     review_tree = self.get_tree(review_url, review_page_text, False)
                     review_tree_by_html = self.get_tree(review_url, review_page_text, True)
-                    # inside loop
-                comment_list = review_tree.xpath(
-                        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li')
-                comment_id_list = review_tree.xpath(
-                        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/@data-id')
-                comment_userid_list = review_tree.xpath(
-                        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="pic"]/a[1]/@user-id')
-                comment_username_list = review_tree.xpath(
-                        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="pic"]/p[@class="name"]/a/text()')
-                comment_rank_list = review_tree.xpath(
-                        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/span[1]/@title')
-                comment_taste_lvl_list = review_tree.xpath(
-                        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/div/span[1]/text()')
-                comment_env_lvl_list = review_tree.xpath(
-                        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/div/span[2]/text()')
-                comment_ser_lvl_list = review_tree.xpath(
-                        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/div/span[3]/text()')
-                # move into for loop
-                # comment_desc_list = review_tree.xpath(
-                #     '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="comment-txt"]/div')
-                comment_date_list = review_tree.xpath(
-                    '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="misc-info"]/span[1]/text()')
+                    page_nums = review_tree.xpath(
+                        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="Pages"]/div/a/@data-pg')
+                    if len(page_nums) > 0:
+                        page_nums = list(map(int, page_nums))
+                        page_max = max(page_nums)
+                    else:
+                        page_max = 1
+                    page_num = 1
+                    while page_num <= int(page_max):
+                        if page_num > 1:
+                            review_url = shop_url + '/review_all' + cons.DIAN_PING_REV_PAGE + str(page_num)
+                            review_page_text = self.get_html(review_url, None)
+                            review_tree = self.get_tree(review_url, review_page_text, False)
+                            review_tree_by_html = self.get_tree(review_url, review_page_text, True)
+                            # inside loop
+                        comment_list = review_tree.xpath(
+                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li')
+                        comment_id_list = review_tree.xpath(
+                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/@data-id')
+                        comment_userid_list = review_tree.xpath(
+                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="pic"]/a[1]/@user-id')
+                        comment_username_list = review_tree.xpath(
+                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="pic"]/p[@class="name"]/a/text()')
+                        comment_rank_list = review_tree.xpath(
+                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/span[1]/@title')
+                        comment_taste_lvl_list = review_tree.xpath(
+                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/div/span[1]/text()')
+                        comment_env_lvl_list = review_tree.xpath(
+                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/div/span[2]/text()')
+                        comment_ser_lvl_list = review_tree.xpath(
+                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="user-info"]/div/span[3]/text()')
+                        # move into for loop
+                        # comment_desc_list = review_tree.xpath(
+                        #     '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="comment-txt"]/div')
+                        comment_date_list = review_tree.xpath(
+                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li/div[@class="content"]/div[@class="misc-info"]/span[1]/text()')
 
-                if len(comment_list) > 0:
-                    for y in range(len(comment_list)):
-                        # add date formating to fix review_date due to free-text-formate
-                        review_date = comment_date_list[y]
-                        if(len(review_date) > 5):
-                            review_date = get_re_digits("(\d+-\d+-\d+)", review_date)
-                        else:
-                            review_date = time.strftime("%y", time.localtime()) +'-'+ review_date
+                        if len(comment_list) > 0:
+                            for y in range(len(comment_list)):
+                                # add date formating to fix review_date due to free-text-formate
+                                review_date = comment_date_list[y]
+                                if (len(review_date) > 5):
+                                    review_date = get_re_digits("(\d+-\d+-\d+)", review_date)
+                                else:
+                                    review_date = time.strftime("%y", time.localtime()) + '-' + review_date
 
-                        #if description includes "更多", the div will divides into two sub-div.
-                        comment_desc_div = review_tree_by_html.xpath(
-                            '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="comment-txt"]/div' % (y+1))
-                        comment_desc = ''
-                        if len(comment_desc_div) > 1:
-                            comment_desc = comment_desc_div[1].text_content().strip()
-                        else:
-                            comment_desc = comment_desc_div[0].text_content().strip()
-                        dic_review = {
-                            "ID": comment_id_list[y],
-                            "user_id": comment_userid_list[y],
-                            "user_name": comment_username_list[y].strip(),
-                            "rank": comment_rank_list[y],
-                            "taste_lvl": get_re_digits('(\d+)', comment_taste_lvl_list[y]),
-                            "env_lvl": get_re_digits('(\d+)', comment_env_lvl_list[y]),
-                            "ser_lvl": get_re_digits('(\d+)', comment_ser_lvl_list[y]),
-                            "desc": comment_desc,
-                            "date": review_date
-                        }
-                        dic_review_list.append(dic_review)
-                page_num = page_num + 1
-                #
-            dic = {"ID": ID,
-                   "title": title,
-                   "features": features,
-                   "region": region,
-                   "category": category,
-                   "address": address,
-                   "tel": tel,
-                   "open_hour": open_hours,
-                   "shop_desc": shop_desc,
-                   "sys_upt_date": sys_upt_date,
-                   "stars": stars,
-                   "per_price": per_price,
-                   "lvl_taste": lvl_taste,
-                   "lvl_env": lvl_env,
-                   "lvl_serv": lvl_serv,
-                   "review_num": review_num,
-                   "review": dic_review_list
-                   }
-            self.db.add_food_shop(dic)
-            print('Insert record: ID:' + ID + ' Title: ' + title)
+                                # if description includes "更多", the div will divides into two sub-div.
+                                comment_desc_div = review_tree_by_html.xpath(
+                                    '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="comment-txt"]/div' % (
+                                        y + 1))
+                                comment_desc = ''
+                                if len(comment_desc_div) > 1:
+                                    comment_desc = comment_desc_div[1].text_content().strip()
+                                else:
+                                    comment_desc = comment_desc_div[0].text_content().strip()
+                                dic_review = {
+                                    "ID": comment_id_list[y],
+                                    "user_id": comment_userid_list[y],
+                                    "user_name": comment_username_list[y].strip(),
+                                    "rank": comment_rank_list[y],
+                                    "taste_lvl": get_re_digits('(\d+)', comment_taste_lvl_list[y]),
+                                    "env_lvl": get_re_digits('(\d+)', comment_env_lvl_list[y]),
+                                    "ser_lvl": get_re_digits('(\d+)', comment_ser_lvl_list[y]),
+                                    "desc": comment_desc,
+                                    "date": review_date
+                                }
+                                dic_review_list.append(dic_review)
+                        page_num = page_num + 1
+                        #
+
+
+                dic = {"ID": ID,
+                       "title": title,
+                       "features": features,
+                       "region": region,
+                       "category": category,
+                       "address": address,
+                       "tel": tel,
+                       "open_hour": open_hours,
+                       "shop_desc": shop_desc,
+                       "sys_upt_date": sys_upt_date,
+                       "stars": stars,
+                       "per_price": per_price,
+                       "lvl_taste": lvl_taste,
+                       "lvl_env": lvl_env,
+                       "lvl_serv": lvl_serv,
+                       "review_num": review_num,
+                       "review": dic_review_list
+                       }
+                self.db.add_food_shop(dic)
+                print('Insert record: ID:' + ID + ' Title: ' + title)
+            else:
+                print('Duplicate record : ID"' + ID)
+        if len(page_next) > 0:
+            next_url = cons.DIAN_PING_URL + page_next[0]
+            self.get_restaurant_content(next_url)
+        else:
+            return "next"
 
 
     def get_auth_code(self):
@@ -252,7 +285,7 @@ class Crawler(object):
         # url = tree.xpath('//*[@id="J_code"]/@src')
         # print(url)
         # webbrowser.open_new(url)
-        content = requests.get(cons.DIAN_PINT_AUTH_URL, headers=cons.HEADER)
+        content = requests.get(cons.DIAN_PING_AUTH_URL, headers=cons.HEADER)
         content_text = str(content.text)
         content_text = content_text.replace('EasyLoginCallBack1(','').replace('}})','}}')
         dic_image = json.loads(content_text)
@@ -270,6 +303,22 @@ class Crawler(object):
 
 
         #pic = requests.get(pic_url,headers=cons.HEADER)
+
+    def get_all_cat(self, city, branch):
+        url = 'https://www.dianping.com/shopall/' + str(city) +'/' + str(branch) + '#BDBlock'
+        tree = self.get_tree_direct(url)
+        url_list = tree.xpath('(//a[@class="B"]/@href)|(//a[@class="Bravia"]/@href)')
+        name_list = tree.xpath('(//a[@class="B"]/text())|(//a[@class="Bravia"]/text())')
+        for i in range(len(url_list)):
+            dic={
+                'url' : url_list[i],
+                'name' : name_list[i],
+                'city': city,
+                'branch': branch
+            }
+            self.db.add_cat(dic)
+        return url_list
+
 
 
 
@@ -295,5 +344,6 @@ def get_re_digits(pre_str, target_str):
 
 if __name__ == '__main__':
     s = Crawler()
-    #s.get_restaurant_content(cons.DIAN_PING_SEARCH_URL, cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
-    s.get_auth_code()
+    #s.get_restaurant_content('http://www.dianping.com/search/category/160/10/r65849')
+    # s.get_auth_code()
+    print(s.get_all_cat(cons.CITIES["zhengzhou"], cons.CATEGORIES["food"]))
