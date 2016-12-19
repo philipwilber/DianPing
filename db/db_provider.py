@@ -29,7 +29,8 @@ class DBProvider(object):
     def add_cat(self, cat_dic):
         self.tb_cat.insert(cat_dic)
 
-
+    def get_cat(self):
+        return self.tb_cat.find()
 
 
 
