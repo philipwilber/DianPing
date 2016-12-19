@@ -29,10 +29,10 @@ def main():
                                  args=(url,))
         thread.append(t)
 
-    for i in range(0, 3):
+    for i in range(0, len(thread)):
         thread[i].start()
 
-    for i in range(0, 3):
+    for i in range(0, len(thread)):
         thread[i].join()
 
     end = datetime.now()  # end timing

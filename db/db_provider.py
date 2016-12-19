@@ -16,8 +16,7 @@ class DBProvider(object):
 
 
     def get_food_shop(self):
-        for item in self.tb_food_shop.find():
-           print(item)
+        return self.tb_food_shop.find()
 
     def check_shop_exist(self, ID):
         count = self.tb_food_shop.find({'ID': ID}).count()
@@ -38,4 +37,8 @@ class DBProvider(object):
 
 if __name__ == '__main__':
     s = DBProvider()
-    s.get_food_shop()
+    dic = s.get_food_shop()
+    count = 0
+    for item in dic:
+        count = count + int(item['review_num'])
+    print(count)

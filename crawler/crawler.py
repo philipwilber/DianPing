@@ -93,10 +93,10 @@ class Crawler(object):
                                  args=(x, tree,))
             thread.append(t)
 
-        for i in range(0, 15):
+        for i in range(0, len(thread)):
             thread[i].start()
 
-        for i in range(0, 15):
+        for i in range(0, len(thread)):
             thread[i].join()
 
         if len(page_next) > 0:
