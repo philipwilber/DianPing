@@ -24,29 +24,34 @@ class Crawler(object):
         self.restautrant_num = 0
 
     def get_html(self, url, proxies):
-        try:
-            # req = urllib.request.Request(url=url, headers=const.HEADER)
-            # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
-            if proxies != None :
-                page = requests.get(url, headers=cons.HEADER, proxies=proxies, timeout=cons.TIMEOUT)
-            else:
-                page = requests.get(url, headers=cons.HEADER, timeout=cons.TIMEOUT)
-            if (page.status_code == 200 ):
-                page.encoding = cons.ENCODE_FORM
-                return page.text
-            else:
-                print("Connection Error. Change to new proxy : ")
+        is_exit = self.db.check_url_exit(url)
+        if is_exit != 'Y':
+            try:
+                # req = urllib.request.Request(url=url, headers=const.HEADER)
+                # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
+                if proxies != None:
+                    page = requests.get(url, headers=cons.HEADER, proxies=proxies, timeout=cons.TIMEOUT)
+                else:
+                    page = requests.get(url, headers=cons.HEADER, timeout=cons.TIMEOUT)
+                if (page.status_code == 200):
+                    page.encoding = cons.ENCODE_FORM
+                    return page.text
+                else:
+                    print("Connection Error. Change to new proxy : ")
+                    proxy = proxy_collect.ProxyPool()
+                    proxies_set = proxy.getproxy()
+                    print(proxies_set)
+                    return self.get_html(url, proxies_set)
+            except:
+                print("Unexpected error:", sys.exc_info())
+                print("Change to new proxy : ")
                 proxy = proxy_collect.ProxyPool()
                 proxies_set = proxy.getproxy()
                 print(proxies_set)
                 return self.get_html(url, proxies_set)
-        except:
-            print("Unexpected error:", sys.exc_info())
-            print("Change to new proxy : ")
-            proxy = proxy_collect.ProxyPool()
-            proxies_set = proxy.getproxy()
-            print(proxies_set)
-            return self.get_html(url, proxies_set)
+        else:
+            print('Duplicate Url: ' + url)
+
 
     def get_tree_direct(self, url):
         # get tree without checking auth code page
@@ -54,6 +59,7 @@ class Crawler(object):
             page_text = self.get_html(url, None)
             tree = etree.HTML(page_text)
             print('(etree)Read Page Time:' + str(datetime.now()) + '   Url: ' + url)
+            self.db.add_read_url(url)
             return tree
         except:
             print("Unexpected error:", sys.exc_info())
@@ -73,6 +79,7 @@ class Crawler(object):
             else:
                 if(etree_to_html == False):
                     print('(etree)Read Page Time:' + str(datetime.now()) + '   Url: ' + url)
+                    self.db.add_read_url(url)
                 else:
                     print('(lxml.html.fromstring)Read Page Time:' + str(datetime.now()) + ' Url : ' + url)
                 return tree
