@@ -360,7 +360,8 @@ class Crawler(object):
                 'url' : url_list[i],
                 'name' : name_list[i],
                 'city': city,
-                'branch': branch
+                'branch': branch,
+                'is_crawler' : 0
             }
             self.db.add_cat(dic)
         return url_list
@@ -384,32 +385,33 @@ def get_re_digits(pre_str, target_str):
 
 if __name__ == '__main__':
     s = Crawler()
+    s.get_all_cat_from_html(cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
     #s.get_restaurant_content('http://www.dianping.com/search/category/160/10/r65849')
     # s.get_auth_code()
     #s.get_all_cat_from_db()
     #s.get_restaurant_content(cons.DIAN_PING_SEARCH_URL, cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
     # s.get_auth_code()
 
-    review_page_text = s.get_html('http://www.dianping.com/shop/23603901/review_all?pageno=79', None)
-    review_tree = s.get_tree('http://www.dianping.com/shop/23603901/review_all?pageno=79', review_page_text, False)
-    comment_taste_lvl = review_tree.xpath(
-        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="user-info"]/div/span[1]/text()' % (
-        4))
-    if len(comment_taste_lvl) > 0:
-        comment_taste_lvl_str = comment_taste_lvl[0]
-    else:
-        comment_taste_lvl_str = '0'
-    comment_env_lvl = review_tree.xpath(
-        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="user-info"]/div/span[2]/text()' % (
-        4))
-    if len(comment_env_lvl) == 0:
-        comment_env_lvl_str = comment_env_lvl[0]
-    else:
-        comment_env_lvl_str = '0'
-    comment_ser_lvl = review_tree.xpath(
-        '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="user-info"]/div/span[3]/text()' % (
-        4))
-    if len(comment_ser_lvl) == 0:
-        comment_ser_lvl_str = comment_ser_lvl[0]
-    else:
-        comment_ser_lvl_str = '0'
+    # review_page_text = s.get_html('http://www.dianping.com/shop/23603901/review_all?pageno=79', None)
+    # review_tree = s.get_tree('http://www.dianping.com/shop/23603901/review_all?pageno=79', review_page_text, False)
+    # comment_taste_lvl = review_tree.xpath(
+    #     '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="user-info"]/div/span[1]/text()' % (
+    #     4))
+    # if len(comment_taste_lvl) > 0:
+    #     comment_taste_lvl_str = comment_taste_lvl[0]
+    # else:
+    #     comment_taste_lvl_str = '0'
+    # comment_env_lvl = review_tree.xpath(
+    #     '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="user-info"]/div/span[2]/text()' % (
+    #     4))
+    # if len(comment_env_lvl) == 0:
+    #     comment_env_lvl_str = comment_env_lvl[0]
+    # else:
+    #     comment_env_lvl_str = '0'
+    # comment_ser_lvl = review_tree.xpath(
+    #     '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="user-info"]/div/span[3]/text()' % (
+    #     4))
+    # if len(comment_ser_lvl) == 0:
+    #     comment_ser_lvl_str = comment_ser_lvl[0]
+    # else:
+    #     comment_ser_lvl_str = '0'
