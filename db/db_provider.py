@@ -32,8 +32,9 @@ class DBProvider(object):
     def get_cat(self):
         return self.tb_cat.find()
 
-    def add_read_url(self, url):
-        url_dic = {'url': url}
+    def add_read_url(self, url, error):
+        url_dic = {'url': url,
+                   'error' : error}
         self.tb_url.insert(url_dic)
 
     def check_url_exit(self, url):

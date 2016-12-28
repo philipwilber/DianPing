@@ -103,7 +103,7 @@ class GatherProxy(object):
 		proxies=set()
 		for i in range(1,pages+1):
 			params={"Type":"elite","PageIdx":str(i),"Uptime":str(uptime)}
-			r=requests.post(self.url+"/anonymity/t=Elite",params=params,headers=header)
+			r=requests.post(self.url+"/anonymity/?t=Elite",params=params,headers=header)
 			for td in self.pre1.findall(r.text):
 				if fast and 'center fast' not in td:
 					continue
@@ -146,7 +146,8 @@ class ProxyPool(object):
 		proxies={'http':'http://'+proxy,'https':'https://'+proxy}
 		#r=requests.get('http://icanhazip.com',proxies=proxies,timeout=1)
 		try:
-			r=requests.get('http://icanhazip.com/',proxies=proxies,timeout=1)
+			r=requests.get('http://www.baidu.com/',proxies=proxies,timeout=1)
+			# http://icanhazip.com/
 			if (r.status_code == 200 ):
 				return proxies
 			else:

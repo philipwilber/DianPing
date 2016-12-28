@@ -23,8 +23,11 @@ class Crawler(object):
         self.db = db_provider.DBProvider()
         self.restautrant_num = 0
 
-    def get_html(self, url, proxies):
-        is_exit = self.db.check_url_exit(url)
+    def get_html(self, url, proxies, is_check_url):
+        if is_check_url:
+            is_exit = self.db.check_url_exit(url)
+        else:
+            is_exit = 'N'
         if is_exit != 'Y':
             try:
                 # req = urllib.request.Request(url=url, headers=const.HEADER)
@@ -33,33 +36,37 @@ class Crawler(object):
                     page = requests.get(url, headers=cons.HEADER, proxies=proxies, timeout=cons.TIMEOUT)
                 else:
                     page = requests.get(url, headers=cons.HEADER, timeout=cons.TIMEOUT)
-                if (page.status_code == 200):
+                if page.status_code == 200 or page.status_code == 404:
                     page.encoding = cons.ENCODE_FORM
                     return page.text
                 else:
-                    print("Connection Error. Change to new proxy : ")
+                    if page.status_code == 403:
+                        webbrowser.open_new(url)
+                        input_text = input("Please Enter Verification Code in Browser!")
+                    else:
+                        print(str(url) + ' Connection Error : ' + str(page.status_code) + ' Change to new proxy : ')
                     proxy = proxy_collect.ProxyPool()
                     proxies_set = proxy.getproxy()
                     print(proxies_set)
-                    return self.get_html(url, proxies_set)
+                    return self.get_html(url, proxies_set, is_check_url)
             except:
                 print("Unexpected error:", sys.exc_info())
                 print("Change to new proxy : ")
                 proxy = proxy_collect.ProxyPool()
                 proxies_set = proxy.getproxy()
                 print(proxies_set)
-                return self.get_html(url, proxies_set)
+                return self.get_html(url, proxies_set, is_check_url)
         else:
-            print('Duplicate Url: ' + url)
+            return 'Y'
 
 
     def get_tree_direct(self, url):
         # get tree without checking auth code page
         try:
-            page_text = self.get_html(url, None)
+            page_text = self.get_html(url, None, False)
             tree = etree.HTML(page_text)
             print('(etree)Read Page Time:' + str(datetime.now()) + '   Url: ' + url)
-            self.db.add_read_url(url)
+            self.db.add_read_url(url, 0)
             return tree
         except:
             print("Unexpected error:", sys.exc_info())
@@ -75,11 +82,11 @@ class Crawler(object):
                 tree = lxml.html.fromstring(page_text)
             if tree.xpath('/html/head/title/text') == '验证码':
                 if self.get_auth_code() == True:
-                    self.get_tree(url, self.get_html(url, None), etree_to_html)
+                    self.get_tree(url, self.get_html(url, None), etree_to_html, False)
             else:
                 if(etree_to_html == False):
                     print('(etree)Read Page Time:' + str(datetime.now()) + '   Url: ' + url)
-                    self.db.add_read_url(url)
+                    self.db.add_read_url(url, 0)
                 else:
                     print('(lxml.html.fromstring)Read Page Time:' + str(datetime.now()) + ' Url : ' + url)
                 return tree
@@ -89,28 +96,33 @@ class Crawler(object):
 
     def get_restaurant_content(self, url):
         thread = []
-        tree = self.get_tree(url, self.get_html(url, None), False)
-        # get next page url, it will be used at the end of this method to recursive loop
-        page_next = tree.xpath('//*[@id="top"]/div[6]/div[3]/div[1]/div[2]/a[@class="next"]/@href')
-        # get all restaurant infomation in current page
-        shop_list = tree.xpath('//*[@id="shop-all-list"]/ul/li/div[1]')
+        page_text = self.get_html(url, None, False)
+        if page_text != 'Y' :
+            tree = self.get_tree(url, page_text, False)
+            # get next page url, it will be used at the end of this method to recursive loop
+            page_next = tree.xpath('//*[@id="top"]/div[6]/div[3]/div[1]/div[2]/a[@class="next"]/@href')
+            # get all restaurant infomation in current page
+            shop_list = tree.xpath('//*[@id="shop-all-list"]/ul/li/div[1]')
 
-        for x in range(len(shop_list)):
-            t = threading.Thread(target=self.get_restaurant_detail,
-                                 args=(x, tree,))
-            thread.append(t)
+            for x in range(len(shop_list)):
+                t = threading.Thread(target=self.get_restaurant_detail,
+                                     args=(x, tree,))
+                thread.append(t)
 
-        for i in range(0, len(thread)):
-            thread[i].start()
+            for i in range(0, len(thread)):
+                thread[i].start()
 
-        for i in range(0, len(thread)):
-            thread[i].join()
+            for i in range(0, len(thread)):
+                thread[i].join()
 
-        if len(page_next) > 0:
-            next_url = cons.DIAN_PING_URL + page_next[0]
-            self.get_restaurant_content(next_url)
+            if len(page_next) > 0:
+                next_url = cons.DIAN_PING_URL + page_next[0]
+                self.get_restaurant_content(next_url)
+            else:
+                return "next"
         else:
-            return "next"
+            print('Duplicate Url: ' + url)
+
 
     def get_restaurant_detail(self, x, tree):
             _shop_url = tree.xpath(
@@ -140,7 +152,7 @@ class Crawler(object):
                         features["book"] = 1
 
                 shop_url = cons.DIAN_PING_URL + _shop_url[0]
-                shop_tree = self.get_tree(shop_url, self.get_html(shop_url, None), False)
+                shop_tree = self.get_tree(shop_url, self.get_html(shop_url, None, False), False)
                 region_url = shop_tree.xpath('//*[@id="body"]/div[2]/div[1]/a[2]/@href')[0]
                 # eg. http://www.dianping.com/search/category/160/10/r7457
                 region = 'r' + get_re_digits('r\/*(\d+)', region_url)
@@ -216,7 +228,7 @@ class Crawler(object):
                 if review_num != 0:
                     # Review
                     review_url = shop_url + '/review_all'
-                    review_page_text = self.get_html(review_url, None)
+                    review_page_text = self.get_html(review_url, None, True)
                     review_tree = self.get_tree(review_url, review_page_text, False)
                     review_tree_by_html = self.get_tree(review_url, review_page_text, True)
 
@@ -231,7 +243,7 @@ class Crawler(object):
                     while page_num <= int(page_max):
                         if page_num > 1:
                             review_url = shop_url + '/review_all' + cons.DIAN_PING_REV_PAGE + str(page_num)
-                            review_page_text = self.get_html(review_url, None)
+                            review_page_text = self.get_html(review_url, None, False)
                             review_tree = self.get_tree(review_url, review_page_text, False)
                             review_tree_by_html = self.get_tree(review_url, review_page_text, True)
                             # inside loop
@@ -378,7 +390,11 @@ class Crawler(object):
         # print(type(dic))
         # for item in dic:
         #     print(item['url'])
-        return self.db.get_cat()
+        returned_cursor = self.db.get_cat()
+        # objects = []
+        # for object in returned_cursor:
+        #     objects.append(object)
+        return returned_cursor
 
 
 def get_re_digits(pre_str, target_str):
@@ -392,7 +408,8 @@ def get_re_digits(pre_str, target_str):
 
 if __name__ == '__main__':
     s = Crawler()
-    s.get_all_cat_from_html(cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
+    print(s.get_all_cat_url_from_db())
+    # s.get_all_cat_from_html(cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
     #s.get_restaurant_content('http://www.dianping.com/search/category/160/10/r65849')
     # s.get_auth_code()
     #s.get_all_cat_from_db()
