@@ -50,3 +50,7 @@ Temporary Items
 *.xml
 .idea/DianPing.iml
 *.pyc
+
+*.json
+
+db/db_provider.py
