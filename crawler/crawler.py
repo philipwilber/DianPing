@@ -41,7 +41,7 @@ class Crawler(object):
                     return page.text
                 else:
                     if page.status_code == 403:
-                        webbrowser.open_new(url)
+                        # webbrowser.open_new(url)
                         input_text = input("Please Enter Verification Code in Browser!")
                     else:
                         print(str(url) + ' Connection Error : ' + str(page.status_code) + ' Change to new proxy : ')
@@ -408,8 +408,8 @@ def get_re_digits(pre_str, target_str):
 
 if __name__ == '__main__':
     s = Crawler()
-    print(s.get_all_cat_url_from_db())
-    # s.get_all_cat_from_html(cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
+    # print(s.get_all_cat_url_from_db())
+    s.get_all_cat_from_html(cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
     #s.get_restaurant_content('http://www.dianping.com/search/category/160/10/r65849')
     # s.get_auth_code()
     #s.get_all_cat_from_db()
