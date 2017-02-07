@@ -338,7 +338,7 @@ class Crawler(object):
                        "review_num": review_num,
                        "review": dic_review_list
                        }
-                self.db.add_food_shop(dic)
+                self.db.add_restaurant(dic)
                 self.restautrant_num = self.restautrant_num + 1
                 print('Inserted ' + str(self.restautrant_num) + ' records ID:' + ID + ' Title: ' + title)
             else:
