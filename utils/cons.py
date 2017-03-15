@@ -14,4 +14,6 @@ HEADER = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 
                   'PHOENIX_ID=0a01791f-158a949f392-b357779; s_ViewType=10; '
                   'JSESSIONID=D1BB954289BCED64333309421720CC80; aburl=1; cy=160; cye=zhengzhou',
         'Accept': 'application/json, text/javascript'}
+HEADER_PROXY = {
+    'headers': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36'}
 ENCODE_FORM = 'UTF-8'

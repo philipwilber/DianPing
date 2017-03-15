@@ -21,7 +21,6 @@ class Crawler(object):
 
     def __init__(self, **kwargs):
         self.db = db_provider.DBProvider()
-        self.restautrant_num = 0
 
     def get_html(self, url, proxies, is_check_url):
         if is_check_url:
@@ -29,6 +28,7 @@ class Crawler(object):
         else:
             is_exit = 'N'
         if is_exit != 'Y':
+            proxy = proxy_collect.ProxyPool()
             try:
                 # req = urllib.request.Request(url=url, headers=const.HEADER)
                 # page = urllib.request.urlopen(req).read().decode(const.ENCODE_FORM)
@@ -45,14 +45,12 @@ class Crawler(object):
                         input_text = input("Please Enter Verification Code in Browser!")
                     else:
                         print(str(url) + ' Connection Error : ' + str(page.status_code) + ' Change to new proxy : ')
-                    proxy = proxy_collect.ProxyPool()
                     proxies_set = proxy.getproxy()
                     print(proxies_set)
                     return self.get_html(url, proxies_set, is_check_url)
             except:
                 print("Unexpected error:", sys.exc_info())
                 print("Change to new proxy : ")
-                proxy = proxy_collect.ProxyPool()
                 proxies_set = proxy.getproxy()
                 print(proxies_set)
                 return self.get_html(url, proxies_set, is_check_url)
@@ -319,7 +317,6 @@ class Crawler(object):
                         page_num = page_num + 1
                         #
 
-
                 dic = {"ID": ID,
                        "title": title,
                        "features": features,
@@ -339,8 +336,7 @@ class Crawler(object):
                        "review": dic_review_list
                        }
                 self.db.add_restaurant(dic)
-                self.restautrant_num = self.restautrant_num + 1
-                print('Inserted ' + str(self.restautrant_num) + ' records ID:' + ID + ' Title: ' + title)
+                print('Records ID:' + ID + ' Title: ' + title)
             else:
                 print('Duplicate record : ID"' + ID)
 

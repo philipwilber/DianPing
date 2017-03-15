@@ -1,9 +1,5 @@
-import re, requests, random
-import json
-
-header = {
-    'headers': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.106 Safari/537.36'}
-
+import re, requests, random, json
+from utils import cons
 
 class GatherProxy(object):
     '''To get proxy from http://gatherproxy.com/'''
@@ -22,7 +18,7 @@ class GatherProxy(object):
         proxies = set()
         for i in range(1, pages + 1):
             params = {"Type": "elite", "PageIdx": str(i), "Uptime": str(uptime)}
-            r = requests.post(self.url + "/anonymity/?t=Elite", params=params, headers=header)
+            r = requests.post(self.url + "/anonymity/?t=Elite", params=params, headers=cons.HEADER_PROXY)
             for item in self.pre.findall(r.text):
                 data = json.loads(item)
                 if int(data['PROXY_TIME']) <= 150:
