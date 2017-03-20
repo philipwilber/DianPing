@@ -25,8 +25,8 @@ class DBProvider(object):
     def add_cat(self, cat_dic):
         self.tb_cat.insert(cat_dic)
 
-    def get_cat(self):
-        return self.tb_cat.find()
+    def get_cat(self, city):
+        return self.tb_cat.find({'city': city})
 
     def add_read_url(self, url, error):
         url_dic = {'url': url,

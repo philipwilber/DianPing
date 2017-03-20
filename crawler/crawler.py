@@ -40,11 +40,15 @@ class Crawler(object):
                     page.encoding = cons.ENCODE_FORM
                     return page.text
                 else:
-                    if page.status_code == 403:
-                        # webbrowser.open_new(url)
-                        input_text = input("Please Enter Verification Code in Browser!")
-                    else:
-                        print(str(url) + ' Connection Error : ' + str(page.status_code) + ' Change to new proxy : ')
+                    # if page.status_code == 403:
+                    #     # webbrowser.open_new(url)
+                    #     #input_text = input("Please Enter Verification Code in Browser!")
+                    #     if self.get_auth_code() == True:
+                    #         pass
+                    #     else:
+                    #         return
+                    # else:
+                    print(str(url) + ' Connection Error : ' + str(page.status_code) + ' Change to new proxy : ')
                     proxies_set = proxy.getproxy()
                     print(proxies_set)
                     return self.get_html(url, proxies_set, is_check_url)
@@ -101,7 +105,7 @@ class Crawler(object):
             page_next = tree.xpath('//*[@id="top"]/div[6]/div[3]/div[1]/div[2]/a[@class="next"]/@href')
             # get all restaurant infomation in current page
             shop_list = tree.xpath('//*[@id="shop-all-list"]/ul/li/div[1]')
-
+            # mutex = threading.Lock()
             for x in range(len(shop_list)):
                 t = threading.Thread(target=self.get_restaurant_detail,
                                      args=(x, tree,))
@@ -190,36 +194,37 @@ class Crawler(object):
                                 sys_upt_date = get_re_digits('\d+-\d+-\d+', sys_upt_date[0].text.strip())
 
                 stars = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[1]/@title')[0].strip()
-                review_span_num = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[@class="item"]')
+                # review_span_num = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[@class="item"]')
                 # 有无评论
-                if len(review_span_num) > 4:
-                    review_num = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[2]')[0].text.strip()
-                    review_num = get_re_digits('\s*(\d+)', review_num)
-                    per_price = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[3]')[0].text.strip()
-                    per_price = get_re_digits('\s*(\d+)', per_price)
-                    lvl_taste = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[4]')[0].text.strip()
-                    lvl_taste = get_re_digits('\s*(\d.\d+)', lvl_taste)
-                    lvl_env = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[5]')[0].text.strip()
-                    lvl_env = get_re_digits('\s*(\d.\d+)', lvl_env)
-                    lvl_serv = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[6]')[0].text.strip()
-                    lvl_serv = get_re_digits('\s*(\d.\d+)', lvl_serv)
-                else:
-                    # 有均价无评论 或 无均价有评论
-                    first_span_text =shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[2]')[0].text.strip()
-                    if first_span_text[0] == '人':
-                        review_num = 0
-                        per_price = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[2]')[0].text.strip()
-                        per_price = get_re_digits('\s*(\d+)', per_price)
-                    else:
-                        review_num = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[2]')[0].text.strip()
-                        review_num = get_re_digits('\s*(\d+)', review_num)
-                        per_price = 0
-                    lvl_taste = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[3]')[0].text.strip()
-                    lvl_taste = get_re_digits('\s*(\d.\d+)', lvl_taste)
-                    lvl_env = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[4]')[0].text.strip()
-                    lvl_env = get_re_digits('\s*(\d.\d+)', lvl_env)
-                    lvl_serv = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[5]')[0].text.strip()
-                    lvl_serv = get_re_digits('\s*(\d.\d+)', lvl_serv)
+                # if len(review_span_num) > 4:
+
+                review_num = shop_tree.xpath('//*[@id="reviewCount"]')[0].text.strip()
+                review_num = get_re_digits('\s*(\d+)', review_num)
+                per_price = shop_tree.xpath('//*[@id="avgPriceTitle"]')[0].text.strip()
+                per_price = get_re_digits('\s*(\d+)', per_price)
+                lvl_taste = shop_tree.xpath('//*[@id="comment_score"]/span[1]')[0].text.strip()
+                lvl_taste = get_re_digits('\s*(\d.\d+)', lvl_taste)
+                lvl_env = shop_tree.xpath('//*[@id="comment_score"]/span[2]')[0].text.strip()
+                lvl_env = get_re_digits('\s*(\d.\d+)', lvl_env)
+                lvl_serv = shop_tree.xpath('//*[@id="comment_score"]/span[3]')[0].text.strip()
+                lvl_serv = get_re_digits('\s*(\d.\d+)', lvl_serv)
+                # else:
+                #     # 有均价无评论 或 无均价有评论
+                #     first_span_text =shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[2]')[0].text.strip()
+                #     if first_span_text[0] == '人':
+                #         review_num = 0
+                #         per_price = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[2]')[0].text.strip()
+                #         per_price = get_re_digits('\s*(\d+)', per_price)
+                #     else:
+                #         review_num = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[2]')[0].text.strip()
+                #         review_num = get_re_digits('\s*(\d+)', review_num)
+                #         per_price = 0
+                #     lvl_taste = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[3]')[0].text.strip()
+                #     lvl_taste = get_re_digits('\s*(\d.\d+)', lvl_taste)
+                #     lvl_env = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[4]')[0].text.strip()
+                #     lvl_env = get_re_digits('\s*(\d.\d+)', lvl_env)
+                #     lvl_serv = shop_tree.xpath('//*[@id="basic-info"]/div[1]/span[5]')[0].text.strip()
+                #     lvl_serv = get_re_digits('\s*(\d.\d+)', lvl_serv)
 
 
                 dic_review_list = []
@@ -335,8 +340,10 @@ class Crawler(object):
                        "review_num": review_num,
                        "review": dic_review_list
                        }
+                # mutex.acquire()
                 self.db.add_restaurant(dic)
                 print('Records ID:' + ID + ' Title: ' + title)
+
             else:
                 print('Duplicate record : ID"' + ID)
 
@@ -381,12 +388,12 @@ class Crawler(object):
             self.db.add_cat(dic)
         return url_list
 
-    def get_all_cat_url_from_db(self):
+    def get_all_cat_url_from_db(self, city):
         # dic =  self.db.get_cat()
         # print(type(dic))
         # for item in dic:
         #     print(item['url'])
-        returned_cursor = self.db.get_cat()
+        returned_cursor = self.db.get_cat(city)
         # objects = []
         # for object in returned_cursor:
         #     objects.append(object)
@@ -405,33 +412,5 @@ def get_re_digits(pre_str, target_str):
 if __name__ == '__main__':
     s = Crawler()
     # print(s.get_all_cat_url_from_db())
-    s.get_all_cat_from_html(cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
-    #s.get_restaurant_content('http://www.dianping.com/search/category/160/10/r65849')
-    # s.get_auth_code()
-    #s.get_all_cat_from_db()
-    #s.get_restaurant_content(cons.DIAN_PING_SEARCH_URL, cons.CITIES['zhengzhou'], cons.CATEGORIES['food'])
-    # s.get_auth_code()
+    s.get_all_cat_from_html(cons.CITIES['shenzhen'], cons.CATEGORIES['food'])
 
-    # review_page_text = s.get_html('http://www.dianping.com/shop/23603901/review_all?pageno=79', None)
-    # review_tree = s.get_tree('http://www.dianping.com/shop/23603901/review_all?pageno=79', review_page_text, False)
-    # comment_taste_lvl = review_tree.xpath(
-    #     '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="user-info"]/div/span[1]/text()' % (
-    #     4))
-    # if len(comment_taste_lvl) > 0:
-    #     comment_taste_lvl_str = comment_taste_lvl[0]
-    # else:
-    #     comment_taste_lvl_str = '0'
-    # comment_env_lvl = review_tree.xpath(
-    #     '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="user-info"]/div/span[2]/text()' % (
-    #     4))
-    # if len(comment_env_lvl) == 0:
-    #     comment_env_lvl_str = comment_env_lvl[0]
-    # else:
-    #     comment_env_lvl_str = '0'
-    # comment_ser_lvl = review_tree.xpath(
-    #     '//*[@id="top"]/div[@class="shop-wrap shop-revitew"]/div[@class="main"]/div/div[@class="comment-mode"]/div[@class="comment-list"]/ul/li[%s]/div[@class="content"]/div[@class="user-info"]/div/span[3]/text()' % (
-    #     4))
-    # if len(comment_ser_lvl) == 0:
-    #     comment_ser_lvl_str = comment_ser_lvl[0]
-    # else:
-    #     comment_ser_lvl_str = '0'

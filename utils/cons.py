@@ -4,7 +4,7 @@ DIAN_PING_URL = 'http://www.dianping.com'
 DIAN_PING_REV_PAGE = '?pageno='
 DIAN_PING_AUTH_URL = 'http://m.dianping.com/account/ajax/getCaptcha?callback=EasyLoginCallBack1'
 TIMEOUT = 1000
-CITIES = {'zhengzhou':160}
+CITIES = {'zhengzhou':160, 'shenzhen':7}
 CATEGORIES = {'food':10}
 HEADER = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
                         'Chrome/52.0.2723.3 Safari/537.36',

@@ -14,26 +14,26 @@ def main():
     print(now)
     thread = []
     url_list = []
-    dic_cat = cr.get_all_cat_url_from_db()
+    dic_cat = cr.get_all_cat_url_from_db(cons.CITIES['shenzhen'])
     for item in dic_cat:
         url = cons.DIAN_PING_URL + str(item['url'])
-        # main_crawler(url)
-        next = False
-        for url_str in url_list:
-            if url_str == url:
-                next = True
-                break
-        if next == False:
-            print('Now to get -------- ' + url)
-            t = threading.Thread(target=main_crawler,
-                                 args=(url,))
-        thread.append(t)
+        main_crawler(url)
+        # next = False
+        # for url_str in url_list:
+        #     if url_str == url:
+        #         next = True
+        #         break
+        # if next == False:
+        #     print('Now to get -------- ' + url)
+        #     t = threading.Thread(target=main_crawler,
+        #                          args=(url,))
+        # thread.append(t)
 
-    for i in range(0, len(thread)):
-        thread[i].start()
-
-    for i in range(0, len(thread)):
-        thread[i].join()
+    # for i in range(0, len(thread)):
+    #     thread[i].start()
+    #
+    # for i in range(0, len(thread)):
+    #     thread[i].join()
 
     end = datetime.now()  # end timing
     print(end)
