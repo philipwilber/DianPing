@@ -5,7 +5,7 @@ class DBProvider(object):
     def __init__(self):
         conn = MongoClient('localhost', 27017)
         self.db = conn.DB_DIANPING
-        self.tb_restaurant = self.db.TB_RESTAURANT
+        self.tb_restaurant = self.db.TB_RESTAURANT_ZHENGZHOU
         self.tb_cat = self.db.TB_CAT
         self.tb_url = self.db.TB_URL
 
